@@ -1,0 +1,57 @@
+[wake_word]
+provider = "openwakeword"
+phrase = "hey mini-jarvis"
+threshold = 0.50
+model_paths = []
+labels = []
+
+[audio]
+sample_rate = 16000
+channels = 1
+chunk_ms = 80
+silence_timeout_ms = 1000
+max_record_seconds = 20
+
+[vad]
+provider = "energy"
+energy_threshold = 500
+webrtc_aggressiveness = 2
+
+[stt]
+provider = "whisper"
+model = "base"
+language = "es"
+
+[hermes]
+# Opciones: api, cli, echo
+mode = "api"
+endpoint = "http://localhost:8000/message"
+timeout_seconds = 60
+command = ""
+require_open = true
+
+[tts]
+enabled = true
+provider = "minimax"
+max_chars = 1200
+daily_limit_chars = 4000
+play_audio = true
+save_audio = true
+
+[minimax]
+api_host = "https://api.minimax.io"
+model = "speech-2.8-turbo"
+voice_id = "Spanish_Trustworthy_Man"
+language_boost = "Spanish"
+format = "mp3"
+sample_rate = 32000
+bitrate = 128000
+channel = 1
+speed = 1.0
+volume = 1.0
+pitch = 0
+output_format = "hex"
+
+[paths]
+audio_dir = "artifacts/audio"
+usage_file = "artifacts/minimax_usage.json"

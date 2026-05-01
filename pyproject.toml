@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mini-jarvis"
+version = "0.1.0"
+description = "Capa de voz para Hermes Agent con wake word, STT, bridge y TTS."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+audio = [
+  "numpy>=1.26.0",
+  "sounddevice>=0.4.6",
+]
+wakeword = [
+  "openwakeword>=0.6.0",
+]
+vad = [
+  "webrtcvad>=2.0.10",
+]
+stt = [
+  "openai-whisper>=20231117",
+]
+dev = [
+  "pytest>=8.0.0",
+]
+all = [
+  "numpy>=1.26.0",
+  "sounddevice>=0.4.6",
+  "openwakeword>=0.6.0",
+  "webrtcvad>=2.0.10",
+  "openai-whisper>=20231117",
+]
+
+[project.scripts]
+mini-jarvis = "mini_jarvis.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mini_jarvis*"]
