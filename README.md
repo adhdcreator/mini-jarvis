@@ -2,8 +2,8 @@
 
 Mini-Jarvis es una capa de voz para Hermes Agent.
 
-Cuando Hermes este abierto, Mini-Jarvis permite decir `hey mini-jarvis`, grabar
-la peticion, enviarla a Hermes y reproducir la respuesta con voz.
+Cuando Hermes esté abierto, Mini-Jarvis permite decir `hey mini-jarvis`, grabar
+la petición, enviarla a Hermes y reproducir la respuesta con voz.
 
 ```text
 Mini-Jarvis = wake word + audio + STT + bridge + TTS
@@ -13,14 +13,14 @@ Hermes      = razonamiento + herramientas + respuesta final
 ## Flujo
 
 ```text
-Microfono
+Micrófono
   -> wake_word.py detecta "hey mini-jarvis"
-  -> audio.py graba la peticion
+  -> audio.py graba la petición
   -> vad.py corta al detectar silencio
   -> stt.py convierte audio a texto
-  -> hermes_bridge.py envia texto a Hermes
+  -> hermes_bridge.py envía texto a Hermes
   -> Hermes devuelve texto
-  -> tts.py envia texto a MiniMax
+  -> tts.py envía texto a MiniMax
   -> player.py reproduce el audio
 ```
 
@@ -63,7 +63,7 @@ Todo el flujo de voz local:
 python -m pip install -e ".[all]"
 ```
 
-Si solo quieres probar sin microfono:
+Si solo quieres probar sin micrófono:
 
 ```bash
 python -m pip install -e .
@@ -92,7 +92,7 @@ export MINIMAX_API_HOST="https://api.minimax.io"
 
 ## Probar
 
-Revisar dependencias y configuracion:
+Revisar dependencias y configuración:
 
 ```bash
 mini-jarvis doctor
@@ -134,7 +134,7 @@ Luego:
 mini-jarvis ask "resumime lo que tengo abierto" --speak
 ```
 
-Ejecutar una sesion de voz completa:
+Ejecutar una sesión de voz completa:
 
 ```bash
 mini-jarvis run
@@ -230,9 +230,9 @@ Por defecto pide audio en `hex`, lo decodifica, lo guarda en
 
 Los skills son cortos y accionables:
 
-- `voice-session`: reglas de grabacion, silencio, retry y STT.
-- `hermes-bridge`: como enviar mensajes a Hermes y extraer respuestas.
-- `minimax-tts`: como generar voz y controlar caracteres.
+- `voice-session`: reglas de grabación, silencio, retry y STT.
+- `hermes-bridge`: cómo enviar mensajes a Hermes y extraer respuestas.
+- `minimax-tts`: cómo generar voz y controlar caracteres.
 
 ## Pendientes reales
 
@@ -240,5 +240,5 @@ Los skills son cortos y accionables:
 - Elegir una voz real de MiniMax para `voice_id`.
 - Entrenar o seleccionar modelo de `openwakeword` para `hey mini-jarvis`.
 - Ajustar `energy_threshold` o cambiar a WebRTC/Silero VAD.
-- Probar latencia con microfono real.
-- Decidir si el proceso correra como servicio en background.
+- Probar latencia con micrófono real.
+- Decidir si el proceso correrá como servicio en background.
