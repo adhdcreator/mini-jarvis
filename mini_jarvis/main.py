@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import os
 import sys
+import traceback
 from pathlib import Path
 
 from .config import ensure_runtime_dirs, load_config, write_example_config
@@ -22,6 +23,9 @@ def main(argv: list[str] | None = None) -> int:
         print("\nMini-Jarvis detenido.")
         return 130
     except Exception as exc:
+        if getattr(args, "debug", False):
+            traceback.print_exc()
+            return 1
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
@@ -34,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="config.toml",
         help="Ruta al archivo TOML de configuracion.",
     )
+    parser.add_argument("--debug", action="store_true", help="Muestra traceback en errores.")
     sub = parser.add_subparsers(required=True)
 
     doctor = sub.add_parser("doctor", help="Revisa configuracion y dependencias.")

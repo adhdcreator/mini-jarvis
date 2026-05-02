@@ -39,8 +39,11 @@ class WhisperTranscriber:
         if self._config.language:
             options["language"] = self._config.language
         result = self._model.transcribe(str(audio_path), **options)
+        text = str(result.get("text", "")).strip()
+        if not text:
+            raise TranscriptionError("Whisper no devolvio texto")
         return Transcript(
-            text=str(result.get("text", "")).strip(),
+            text=text,
             language=result.get("language"),
         )
 

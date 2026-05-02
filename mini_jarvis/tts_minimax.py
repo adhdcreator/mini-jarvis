@@ -110,8 +110,11 @@ class MiniMaxTTSClient:
     def _decode_audio(self, value: str) -> bytes:
         parsed = urlparse(value)
         if parsed.scheme in {"http", "https"}:
-            response = requests.get(value, timeout=90)
-            response.raise_for_status()
+            try:
+                response = requests.get(value, timeout=90)
+                response.raise_for_status()
+            except requests.RequestException as exc:
+                raise MiniMaxTTSError(f"No pude descargar audio de MiniMax: {exc}") from exc
             return response.content
         try:
             return bytes.fromhex(value)

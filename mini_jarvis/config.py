@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 
+class ConfigError(ValueError):
+    """Raised when the Mini-Jarvis config is invalid."""
+
+
 @dataclass(slots=True)
 class WakeWordConfig:
     provider: str = "openwakeword"
@@ -113,15 +117,25 @@ def load_config(path: str | Path | None = None) -> AppConfig:
         paths=_build_paths(data.get("paths", {})),
     )
     _apply_env_overrides(cfg)
+    validate_config(cfg)
     return cfg
 
 
 def _build(cls: type[Any], values: dict[str, Any]) -> Any:
     allowed = set(cls.__dataclass_fields__)  # type: ignore[attr-defined]
+    unknown = sorted(set(values) - allowed)
+    if unknown:
+        joined = ", ".join(unknown)
+        raise ConfigError(f"Claves desconocidas en {cls.__name__}: {joined}")
     return cls(**{key: value for key, value in values.items() if key in allowed})
 
 
 def _build_paths(values: dict[str, Any]) -> PathsConfig:
+    allowed = {"audio_dir", "usage_file"}
+    unknown = sorted(set(values) - allowed)
+    if unknown:
+        joined = ", ".join(unknown)
+        raise ConfigError(f"Claves desconocidas en PathsConfig: {joined}")
     return PathsConfig(
         audio_dir=Path(values.get("audio_dir", "artifacts/audio")),
         usage_file=Path(values.get("usage_file", "artifacts/minimax_usage.json")),
@@ -133,6 +147,37 @@ def _apply_env_overrides(cfg: AppConfig) -> None:
     cfg.minimax.api_host = os.getenv("MINIMAX_API_HOST", cfg.minimax.api_host)
     cfg.hermes.endpoint = os.getenv("HERMES_ENDPOINT", cfg.hermes.endpoint)
     cfg.hermes.command = os.getenv("HERMES_COMMAND", cfg.hermes.command)
+
+
+def validate_config(cfg: AppConfig) -> None:
+    _require_range("wake_word.threshold", cfg.wake_word.threshold, minimum=0, maximum=1)
+    _require_positive("audio.sample_rate", cfg.audio.sample_rate)
+    _require_positive("audio.channels", cfg.audio.channels)
+    _require_positive("audio.chunk_ms", cfg.audio.chunk_ms)
+    _require_positive("audio.silence_timeout_ms", cfg.audio.silence_timeout_ms)
+    _require_positive("audio.max_record_seconds", cfg.audio.max_record_seconds)
+    _require_positive("vad.energy_threshold", cfg.vad.energy_threshold)
+    _require_range("vad.webrtc_aggressiveness", cfg.vad.webrtc_aggressiveness, minimum=0, maximum=3)
+    _require_positive("hermes.timeout_seconds", cfg.hermes.timeout_seconds)
+    _require_positive("tts.max_chars", cfg.tts.max_chars)
+    if cfg.tts.daily_limit_chars is not None:
+        _require_positive("tts.daily_limit_chars", cfg.tts.daily_limit_chars)
+    _require_positive("minimax.sample_rate", cfg.minimax.sample_rate)
+    _require_positive("minimax.bitrate", cfg.minimax.bitrate)
+    _require_positive("minimax.channel", cfg.minimax.channel)
+    _require_range("minimax.speed", cfg.minimax.speed, minimum=0.5, maximum=2.0)
+    _require_range("minimax.volume", cfg.minimax.volume, minimum=0, maximum=10)
+    _require_range("minimax.pitch", cfg.minimax.pitch, minimum=-12, maximum=12)
+
+
+def _require_positive(name: str, value: int | float) -> None:
+    if value <= 0:
+        raise ConfigError(f"{name} debe ser mayor que 0")
+
+
+def _require_range(name: str, value: int | float, *, minimum: int | float, maximum: int | float) -> None:
+    if not minimum <= value <= maximum:
+        raise ConfigError(f"{name} debe estar entre {minimum} y {maximum}")
 
 
 def ensure_runtime_dirs(cfg: AppConfig) -> None:

@@ -71,7 +71,7 @@ class CLIHermesBridge:
                 timeout=self._timeout,
                 check=False,
             )
-        except subprocess.SubprocessError as exc:
+        except (OSError, subprocess.SubprocessError) as exc:
             raise HermesBridgeError(f"No pude ejecutar Hermes CLI: {exc}") from exc
 
         if completed.returncode != 0:

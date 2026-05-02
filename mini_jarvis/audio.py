@@ -89,6 +89,9 @@ def record_until_silence(
         if time.monotonic() - started_at >= config.max_record_seconds:
             break
 
+    if not heard_speech:
+        raise AudioError("No se detecto voz en la grabacion")
+
     return RecordedAudio(
         pcm=b"".join(frames),
         sample_rate=config.sample_rate,
