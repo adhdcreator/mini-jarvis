@@ -146,6 +146,22 @@ Escuchar en loop:
 mini-jarvis run --loop
 ```
 
+## Subir a GitHub
+
+El repositorio incluye `.gitignore` para no subir configuración local, audios
+generados ni archivos de entorno. Para publicarlo:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin git@github.com:TU_USUARIO/mini-jarvis.git
+git push -u origin main
+```
+
+Cada push a `main` ejecuta los tests con GitHub Actions.
+
 ## Config principal
 
 ```toml

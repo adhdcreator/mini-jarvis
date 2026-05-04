@@ -11,5 +11,8 @@ build/
 *.egg-info/
 artifacts/
 .env
+config.toml
+*.mp3
+*.wav
 .codex
 .agents/
