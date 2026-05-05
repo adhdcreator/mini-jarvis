@@ -29,6 +29,16 @@ class HermesToolCall:
     id: str | None = None
 
 
+def format_hermes_tool_calls(tool_calls: tuple[HermesToolCall, ...]) -> str:
+    lines: list[str] = []
+    for index, call in enumerate(tool_calls, start=1):
+        label = f"{index}. {call.name}"
+        if call.id:
+            label = f"{label} ({call.id})"
+        lines.append(f"{label}: {_format_tool_arguments(call.arguments)}")
+    return "\n".join(lines)
+
+
 class HermesBridge(Protocol):
     def ask(self, message: str) -> HermesResponse:
         """Send a message to Hermes and return its text response."""
@@ -216,6 +226,12 @@ def _parse_tool_arguments(value: Any) -> Any:
     if value is None:
         return {}
     return value
+
+
+def _format_tool_arguments(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
 def _string_or_none(value: Any) -> str | None:

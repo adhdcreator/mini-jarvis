@@ -12,8 +12,10 @@ from mini_jarvis.config import AudioConfig, ConfigError, HermesConfig, MiniMaxCo
 from mini_jarvis.hermes_bridge import (
     CLIHermesBridge,
     HermesBridgeError,
+    HermesToolCall,
     extract_hermes_text,
     extract_hermes_tool_calls,
+    format_hermes_tool_calls,
 )
 from mini_jarvis.tts_minimax import MiniMaxTTSError, MiniMaxTTSClient
 from mini_jarvis.tts import _limit_text
@@ -118,6 +120,15 @@ class HermesBridgeTests(unittest.TestCase):
         self.assertEqual(response.text, "listo")
         self.assertEqual(response.tool_calls[0].name, "lookup")
         self.assertEqual(response.tool_calls[0].arguments, {"id": 7})
+
+    def test_format_tool_calls_for_cli_output(self) -> None:
+        rendered = format_hermes_tool_calls(
+            (
+                HermesToolCall(name="lookup", arguments={"id": 7}, id="call_7"),
+                HermesToolCall(name="open_app", arguments="Hermes"),
+            )
+        )
+        self.assertEqual(rendered, '1. lookup (call_7): {"id": 7}\n2. open_app: Hermes')
 
 
 class TTSTests(unittest.TestCase):

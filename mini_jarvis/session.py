@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .audio import iter_microphone_chunks, record_until_silence, save_wav
 from .config import AppConfig, ensure_runtime_dirs
-from .hermes_bridge import HermesResponse, build_hermes_bridge
+from .hermes_bridge import HermesResponse, build_hermes_bridge, format_hermes_tool_calls
 from .stt import Transcript, build_transcriber
 from .tts import build_tts_provider
 from .vad import build_vad
@@ -58,10 +58,20 @@ def run_voice_once(config: AppConfig) -> VoiceRunResult:
     )
 
 
-def ask_text(config: AppConfig, message: str, *, speak: bool = False) -> HermesResponse:
+def ask_text(
+    config: AppConfig,
+    message: str,
+    *,
+    speak: bool = False,
+    show_tools: bool = False,
+) -> HermesResponse:
     ensure_runtime_dirs(config)
     response = build_hermes_bridge(config.hermes).ask(message)
     print(response.text)
+    if show_tools and response.tool_calls:
+        print("")
+        print("Tool calls:")
+        print(format_hermes_tool_calls(response.tool_calls))
     if speak:
         build_tts_provider(config).speak(response.text)
     return response

@@ -8,7 +8,7 @@ import traceback
 from pathlib import Path
 
 from .config import ensure_runtime_dirs, load_config, write_example_config
-from .hermes_bridge import build_hermes_bridge
+from .hermes_bridge import build_hermes_bridge, format_hermes_tool_calls
 from .session import ask_text, run_voice_once
 from .tts import build_tts_provider
 
@@ -51,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     ask = sub.add_parser("ask", help="Envia texto a Hermes.")
     ask.add_argument("message", nargs="+")
     ask.add_argument("--speak", action="store_true", help="Lee la respuesta con TTS.")
+    ask.add_argument("--show-tools", action="store_true", help="Muestra tool calls devueltos por Hermes.")
     ask.set_defaults(func=cmd_ask)
 
     speak = sub.add_parser("speak", help="Genera voz para un texto.")
@@ -59,6 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = sub.add_parser("run", help="Ejecuta una sesion completa por voz.")
     run.add_argument("--loop", action="store_true", help="Vuelve a escuchar al terminar.")
+    run.add_argument("--show-tools", action="store_true", help="Muestra tool calls devueltos por Hermes.")
     run.set_defaults(func=cmd_run)
 
     return parser
@@ -107,7 +109,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_ask(args: argparse.Namespace) -> int:
     cfg = load_config(args.config)
     message = " ".join(args.message)
-    ask_text(cfg, message, speak=args.speak)
+    ask_text(cfg, message, speak=args.speak, show_tools=args.show_tools)
     return 0
 
 
@@ -128,6 +130,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"Audio: {result.audio_path}")
         print(f"Usuario: {result.transcript.text}")
         print(f"Hermes: {result.hermes.text}")
+        if args.show_tools and result.hermes.tool_calls:
+            print("Tool calls:")
+            print(format_hermes_tool_calls(result.hermes.tool_calls))
         if not args.loop:
             return 0
 

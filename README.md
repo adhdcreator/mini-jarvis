@@ -128,6 +128,7 @@ mini-jarvis ask "hola hermes"
 | `mini-jarvis doctor` | Valida configuración, dependencias opcionales y variables de entorno. |
 | `mini-jarvis ask "texto"` | Envía texto a Hermes y muestra la respuesta. |
 | `mini-jarvis ask "texto" --speak` | Envía texto a Hermes y reproduce la respuesta con TTS. |
+| `mini-jarvis ask "texto" --show-tools` | Muestra también los tool calls estructurados que devolvió Hermes. |
 | `mini-jarvis speak "texto"` | Genera audio con el proveedor TTS configurado. |
 | `mini-jarvis run` | Espera el wake word, graba, transcribe, consulta Hermes y responde por voz. |
 | `mini-jarvis run --loop` | Repite sesiones de voz hasta interrumpir el proceso. |
@@ -278,6 +279,13 @@ choices[0].message.tool_calls
 
 En modo `cli`, si stdout es JSON, se procesa igual que la respuesta de API. Si
 stdout es texto plano, se mantiene como respuesta final.
+
+Para depurar el contrato de herramientas desde la terminal:
+
+```bash
+mini-jarvis ask "revisa mis notas" --show-tools
+mini-jarvis run --show-tools
+```
 
 ## MiniMax TTS
 
