@@ -9,7 +9,12 @@ import requests
 
 from mini_jarvis.audio import AudioError, record_until_silence
 from mini_jarvis.config import AudioConfig, ConfigError, HermesConfig, MiniMaxConfig, load_config
-from mini_jarvis.hermes_bridge import CLIHermesBridge, HermesBridgeError, extract_hermes_text
+from mini_jarvis.hermes_bridge import (
+    CLIHermesBridge,
+    HermesBridgeError,
+    extract_hermes_text,
+    extract_hermes_tool_calls,
+)
 from mini_jarvis.tts_minimax import MiniMaxTTSError, MiniMaxTTSClient
 from mini_jarvis.tts import _limit_text
 
@@ -60,12 +65,59 @@ class HermesBridgeTests(unittest.TestCase):
         payload = {"choices": [{"message": {"content": "hola"}}]}
         self.assertEqual(extract_hermes_text(payload), "hola")
 
+    def test_extract_openai_style_tool_calls(self) -> None:
+        payload = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "voy a revisar eso",
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "function": {
+                                    "name": "search_notes",
+                                    "arguments": '{"query": "mini jarvis"}',
+                                },
+                            }
+                        ],
+                    }
+                }
+            ]
+        }
+        calls = extract_hermes_tool_calls(payload)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].id, "call_1")
+        self.assertEqual(calls[0].name, "search_notes")
+        self.assertEqual(calls[0].arguments, {"query": "mini jarvis"})
+
+    def test_extract_direct_tool_calls(self) -> None:
+        payload = {
+            "response": "listo",
+            "tool_calls": [{"name": "open_app", "arguments": {"app": "Hermes"}}],
+        }
+        calls = extract_hermes_tool_calls(payload)
+        self.assertEqual(calls[0].name, "open_app")
+        self.assertEqual(calls[0].arguments, {"app": "Hermes"})
+
     @patch("mini_jarvis.hermes_bridge.subprocess.run", side_effect=FileNotFoundError("missing"))
     def test_cli_bridge_wraps_os_errors(self, run: Mock) -> None:
         bridge = CLIHermesBridge(HermesConfig(mode="cli", command="missing-hermes"))
         with self.assertRaises(HermesBridgeError):
             bridge.ask("hola")
         run.assert_called_once()
+
+    @patch("mini_jarvis.hermes_bridge.subprocess.run")
+    def test_cli_bridge_parses_json_tool_calls(self, run: Mock) -> None:
+        run.return_value = Mock(
+            returncode=0,
+            stdout='{"response":"listo","tool_calls":[{"name":"lookup","arguments":"{\\"id\\": 7}"}]}',
+            stderr="",
+        )
+        bridge = CLIHermesBridge(HermesConfig(mode="cli", command="hermes ask"))
+        response = bridge.ask("hola")
+        self.assertEqual(response.text, "listo")
+        self.assertEqual(response.tool_calls[0].name, "lookup")
+        self.assertEqual(response.tool_calls[0].arguments, {"id": 7})
 
 
 class TTSTests(unittest.TestCase):

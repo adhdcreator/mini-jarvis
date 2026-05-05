@@ -19,6 +19,14 @@ class HermesBridgeError(RuntimeError):
 class HermesResponse:
     text: str
     raw: Any = None
+    tool_calls: tuple["HermesToolCall", ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class HermesToolCall:
+    name: str
+    arguments: Any
+    id: str | None = None
 
 
 class HermesBridge(Protocol):
@@ -51,7 +59,8 @@ class APIHermesBridge:
             return HermesResponse(text=text, raw=response.text)
 
         text = extract_hermes_text(payload)
-        return HermesResponse(text=text, raw=payload)
+        tool_calls = extract_hermes_tool_calls(payload)
+        return HermesResponse(text=text, raw=payload, tool_calls=tool_calls)
 
 
 class CLIHermesBridge:
@@ -80,7 +89,17 @@ class CLIHermesBridge:
         text = completed.stdout.strip()
         if not text:
             raise HermesBridgeError("Hermes CLI no devolvio respuesta")
-        return HermesResponse(text=text, raw=completed.stdout)
+
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            return HermesResponse(text=text, raw=completed.stdout)
+
+        return HermesResponse(
+            text=extract_hermes_text(payload),
+            raw=payload,
+            tool_calls=extract_hermes_tool_calls(payload),
+        )
 
 
 class EchoHermesBridge:
@@ -127,3 +146,80 @@ def extract_hermes_text(payload: Any) -> str:
                     return text.strip()
 
     raise HermesBridgeError("No pude extraer texto de la respuesta de Hermes")
+
+
+def extract_hermes_tool_calls(payload: Any) -> tuple[HermesToolCall, ...]:
+    calls: list[HermesToolCall] = []
+    for candidate in _iter_tool_call_containers(payload):
+        if isinstance(candidate, list):
+            calls.extend(_parse_tool_call(item) for item in candidate)
+        elif isinstance(candidate, dict):
+            calls.append(_parse_tool_call(candidate))
+    return tuple(call for call in calls if call.name)
+
+
+def _iter_tool_call_containers(payload: Any) -> list[Any]:
+    if not isinstance(payload, dict):
+        return []
+
+    containers: list[Any] = []
+    for key in ("tool_calls", "toolCalls", "function_call", "functionCall"):
+        value = payload.get(key)
+        if value:
+            containers.append(value)
+
+    message = payload.get("message")
+    if isinstance(message, dict):
+        containers.extend(_iter_tool_call_containers(message))
+
+    choices = payload.get("choices")
+    if isinstance(choices, list):
+        for choice in choices:
+            if not isinstance(choice, dict):
+                continue
+            containers.extend(_iter_tool_call_containers(choice))
+
+    return containers
+
+
+def _parse_tool_call(value: Any) -> HermesToolCall:
+    if not isinstance(value, dict):
+        return HermesToolCall(name="", arguments=None)
+
+    call_id = _string_or_none(value.get("id") or value.get("call_id") or value.get("tool_call_id"))
+    function = value.get("function")
+    if isinstance(function, dict):
+        return HermesToolCall(
+            id=call_id,
+            name=str(function.get("name") or ""),
+            arguments=_parse_tool_arguments(function.get("arguments")),
+        )
+
+    name = value.get("name") or value.get("tool_name") or value.get("function_name")
+    arguments = value.get("arguments", value.get("args", value.get("input")))
+    return HermesToolCall(
+        id=call_id,
+        name=str(name or ""),
+        arguments=_parse_tool_arguments(arguments),
+    )
+
+
+def _parse_tool_arguments(value: Any) -> Any:
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return {}
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            return value
+    if value is None:
+        return {}
+    return value
+
+
+def _string_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None

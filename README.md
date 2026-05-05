@@ -49,29 +49,37 @@ config.example.toml
 pyproject.toml
 ```
 
+## Requisitos
+
+- Python 3.11 o superior.
+- Hermes Agent disponible por API o CLI, salvo que uses `mode = "echo"`.
+- Para sesiones de voz: micrófono, salida de audio y dependencias opcionales.
+- Para MiniMax TTS: una clave en `MINIMAX_API_KEY`.
+
 ## Instalar
 
-Base:
+Instalación mínima, suficiente para probar configuración, Hermes en modo `echo`
+y comandos sin micrófono:
 
 ```bash
 python -m pip install -e .
 ```
 
-Todo el flujo de voz local:
+Instalación completa para el flujo local de voz:
 
 ```bash
 python -m pip install -e ".[all]"
 ```
 
-Si solo quieres probar sin micrófono:
+Dependencias de desarrollo y tests:
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 ```
 
-## Configurar
+## Arranque rápido
 
-Crear config:
+Crear la configuración local:
 
 ```bash
 mini-jarvis init
@@ -89,8 +97,6 @@ Variables necesarias para MiniMax:
 export MINIMAX_API_KEY="tu_api_key"
 export MINIMAX_API_HOST="https://api.minimax.io"
 ```
-
-## Probar
 
 Revisar dependencias y configuración:
 
@@ -113,6 +119,20 @@ Luego:
 ```bash
 mini-jarvis ask "hola hermes"
 ```
+
+## Comandos
+
+| Comando | Uso |
+| --- | --- |
+| `mini-jarvis init` | Crea `config.toml` desde `config.example.toml`. |
+| `mini-jarvis doctor` | Valida configuración, dependencias opcionales y variables de entorno. |
+| `mini-jarvis ask "texto"` | Envía texto a Hermes y muestra la respuesta. |
+| `mini-jarvis ask "texto" --speak` | Envía texto a Hermes y reproduce la respuesta con TTS. |
+| `mini-jarvis speak "texto"` | Genera audio con el proveedor TTS configurado. |
+| `mini-jarvis run` | Espera el wake word, graba, transcribe, consulta Hermes y responde por voz. |
+| `mini-jarvis run --loop` | Repite sesiones de voz hasta interrumpir el proceso. |
+
+## Probar flujos
 
 Probar MiniMax TTS:
 
@@ -146,10 +166,16 @@ Escuchar en loop:
 mini-jarvis run --loop
 ```
 
+Ejecutar tests:
+
+```bash
+pytest
+```
+
 ## Subir a GitHub
 
 El repositorio incluye `.gitignore` para no subir configuración local, audios
-generados ni archivos de entorno. Para publicarlo:
+generados ni archivos de entorno. Si todavía no tiene remoto configurado:
 
 ```bash
 git init
@@ -160,7 +186,17 @@ git remote add origin git@github.com:TU_USUARIO/mini-jarvis.git
 git push -u origin main
 ```
 
-Cada push a `main` ejecuta los tests con GitHub Actions.
+Si ya existe un remoto:
+
+```bash
+git status --short
+git add README.md
+git commit -m "Improve README"
+git push
+```
+
+Cada push a `main` y cada pull request hacia `main` ejecutan los tests con
+GitHub Actions.
 
 ## Config principal
 
@@ -190,6 +226,8 @@ language = "es"
 mode = "api"
 endpoint = "http://localhost:8000/message"
 timeout_seconds = 60
+command = ""
+require_open = true
 
 [tts]
 enabled = true
@@ -206,6 +244,10 @@ voice_id = "Spanish_Trustworthy_Man"
 language_boost = "Spanish"
 format = "mp3"
 output_format = "hex"
+
+[paths]
+audio_dir = "artifacts/audio"
+usage_file = "artifacts/minimax_usage.json"
 ```
 
 ## Hermes Bridge
@@ -224,6 +266,18 @@ leer campos comunes como:
 ```text
 response, answer, text, message, content, choices[0].message.content
 ```
+
+Si Hermes devuelve tool calls estructurados, Mini-Jarvis los conserva en
+`HermesResponse.tool_calls` para que una integración superior pueda auditarlos o
+mostrarlos sin perder el texto final. Soporta formatos comunes:
+
+```text
+tool_calls, toolCalls, function_call, functionCall,
+choices[0].message.tool_calls
+```
+
+En modo `cli`, si stdout es JSON, se procesa igual que la respuesta de API. Si
+stdout es texto plano, se mantiene como respuesta final.
 
 ## MiniMax TTS
 
