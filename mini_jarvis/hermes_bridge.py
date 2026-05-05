@@ -68,9 +68,7 @@ class APIHermesBridge:
                 raise HermesBridgeError("Hermes respondio vacio")
             return HermesResponse(text=text, raw=response.text)
 
-        text = extract_hermes_text(payload)
-        tool_calls = extract_hermes_tool_calls(payload)
-        return HermesResponse(text=text, raw=payload, tool_calls=tool_calls)
+        return build_hermes_response(payload)
 
 
 class CLIHermesBridge:
@@ -105,11 +103,7 @@ class CLIHermesBridge:
         except json.JSONDecodeError:
             return HermesResponse(text=text, raw=completed.stdout)
 
-        return HermesResponse(
-            text=extract_hermes_text(payload),
-            raw=payload,
-            tool_calls=extract_hermes_tool_calls(payload),
-        )
+        return build_hermes_response(payload)
 
 
 class EchoHermesBridge:
@@ -130,6 +124,17 @@ def build_hermes_bridge(config: HermesConfig) -> HermesBridge:
     raise ValueError(f"Modo Hermes no soportado: {config.mode}")
 
 
+def build_hermes_response(payload: Any) -> HermesResponse:
+    tool_calls = extract_hermes_tool_calls(payload)
+    try:
+        text = extract_hermes_text(payload)
+    except HermesBridgeError:
+        if not tool_calls:
+            raise
+        text = ""
+    return HermesResponse(text=text, raw=payload, tool_calls=tool_calls)
+
+
 def extract_hermes_text(payload: Any) -> str:
     if isinstance(payload, str):
         text = payload.strip()
@@ -137,10 +142,14 @@ def extract_hermes_text(payload: Any) -> str:
             return text
 
     if isinstance(payload, dict):
-        for key in ("response", "answer", "text", "message", "content"):
+        for key in ("response", "answer", "text", "message", "content", "output_text"):
             value = payload.get(key)
             if isinstance(value, str) and value.strip():
                 return value.strip()
+
+        content_text = _extract_text_from_content(payload.get("content"))
+        if content_text:
+            return content_text
 
         choices = payload.get("choices")
         if isinstance(choices, list) and choices:
@@ -148,12 +157,25 @@ def extract_hermes_text(payload: Any) -> str:
             if isinstance(first, dict):
                 message = first.get("message")
                 if isinstance(message, dict):
-                    content = message.get("content")
-                    if isinstance(content, str) and content.strip():
-                        return content.strip()
+                    content_text = _extract_text_from_content(message.get("content"))
+                    if content_text:
+                        return content_text
                 text = first.get("text")
                 if isinstance(text, str) and text.strip():
                     return text.strip()
+
+        output = payload.get("output")
+        if isinstance(output, list):
+            for item in output:
+                if not isinstance(item, dict):
+                    continue
+                for key in ("text", "output_text"):
+                    value = item.get(key)
+                    if isinstance(value, str) and value.strip():
+                        return value.strip()
+                content_text = _extract_text_from_content(item.get("content"))
+                if content_text:
+                    return content_text
 
     raise HermesBridgeError("No pude extraer texto de la respuesta de Hermes")
 
@@ -173,7 +195,7 @@ def _iter_tool_call_containers(payload: Any) -> list[Any]:
         return []
 
     containers: list[Any] = []
-    for key in ("tool_calls", "toolCalls", "function_call", "functionCall"):
+    for key in ("tool_calls", "toolCalls", "function_call", "functionCall", "output", "content"):
         value = payload.get(key)
         if value:
             containers.append(value)
@@ -190,6 +212,22 @@ def _iter_tool_call_containers(payload: Any) -> list[Any]:
             containers.extend(_iter_tool_call_containers(choice))
 
     return containers
+
+
+def _extract_text_from_content(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+            if not isinstance(item, dict):
+                continue
+            for key in ("text", "output_text"):
+                text = item.get(key)
+                if isinstance(text, str) and text.strip():
+                    return text.strip()
+    return ""
 
 
 def _parse_tool_call(value: Any) -> HermesToolCall:

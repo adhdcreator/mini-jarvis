@@ -274,11 +274,15 @@ mostrarlos sin perder el texto final. Soporta formatos comunes:
 
 ```text
 tool_calls, toolCalls, function_call, functionCall,
-choices[0].message.tool_calls
+choices[0].message.tool_calls, output, content tool_use
 ```
 
 En modo `cli`, si stdout es JSON, se procesa igual que la respuesta de API. Si
 stdout es texto plano, se mantiene como respuesta final.
+
+Cuando Hermes devuelve una respuesta solo con tool calls y sin texto final,
+Mini-Jarvis ya no falla al parsearla: deja `HermesResponse.text` vacío y
+conserva los tool calls para que el integrador decida el siguiente paso.
 
 Para depurar el contrato de herramientas desde la terminal:
 

@@ -13,6 +13,7 @@ from mini_jarvis.hermes_bridge import (
     CLIHermesBridge,
     HermesBridgeError,
     HermesToolCall,
+    build_hermes_response,
     extract_hermes_text,
     extract_hermes_tool_calls,
     format_hermes_tool_calls,
@@ -98,6 +99,52 @@ class HermesBridgeTests(unittest.TestCase):
             "tool_calls": [{"name": "open_app", "arguments": {"app": "Hermes"}}],
         }
         calls = extract_hermes_tool_calls(payload)
+        self.assertEqual(calls[0].name, "open_app")
+        self.assertEqual(calls[0].arguments, {"app": "Hermes"})
+
+    def test_extract_responses_api_output_text_and_tool_call(self) -> None:
+        payload = {
+            "output": [
+                {"type": "message", "content": [{"type": "output_text", "text": "listo"}]},
+                {
+                    "type": "function_call",
+                    "call_id": "call_9",
+                    "name": "lookup",
+                    "arguments": '{"query": "agenda"}',
+                },
+            ]
+        }
+        self.assertEqual(extract_hermes_text(payload), "listo")
+        calls = extract_hermes_tool_calls(payload)
+        self.assertEqual(calls[0].id, "call_9")
+        self.assertEqual(calls[0].name, "lookup")
+        self.assertEqual(calls[0].arguments, {"query": "agenda"})
+
+    def test_build_response_allows_tool_call_without_text(self) -> None:
+        payload = {
+            "output": [
+                {
+                    "type": "function_call",
+                    "call_id": "call_10",
+                    "name": "read_file",
+                    "arguments": '{"path": "README.md"}',
+                }
+            ]
+        }
+        response = build_hermes_response(payload)
+        self.assertEqual(response.text, "")
+        self.assertEqual(response.tool_calls[0].name, "read_file")
+
+    def test_extract_content_tool_use_blocks(self) -> None:
+        payload = {
+            "content": [
+                {"type": "text", "text": "voy a abrir eso"},
+                {"type": "tool_use", "id": "toolu_1", "name": "open_app", "input": {"app": "Hermes"}},
+            ]
+        }
+        self.assertEqual(extract_hermes_text(payload), "voy a abrir eso")
+        calls = extract_hermes_tool_calls(payload)
+        self.assertEqual(calls[0].id, "toolu_1")
         self.assertEqual(calls[0].name, "open_app")
         self.assertEqual(calls[0].arguments, {"app": "Hermes"})
 
